@@ -1,7 +1,84 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Syncore | Keep your project links in sync</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="flex min-h-screen flex-col">
 
-Welcome to your new app.
+    <!-- Header -->
+    <header class="flex items-center justify-between border-b-4 border-denim-600 px-4 py-2">
+        <a href="/" class="flex items-center gap-2">
+            <img src="/images/syncore-logo.svg" alt="" aria-hidden="true" class="h-10 w-10 object-contain" />
+            <span class="text-4xl tracking-tight">Syn<span class="text-denim-300">core</span></span>
+        </a>
+
+        <nav class="flex gap-6 text-xl">
+            <a href="#" class="hover:text-denim-600">Pricing</a>
+            <a href="#" class="hover:text-denim-600">Support</a>
+        </nav>
+    </header>
+
+    <!-- Hero -->
+    <main class="relative flex flex-1 items-center justify-center overflow-hidden pb-24">
+
+        <div class="hero-grid absolute inset-0" aria-hidden="true"></div>
+
+        <!-- Decorative background icons (hidden on small screens) -->
+        <svg class="absolute left-[19%] top-[18%] hidden h-16 w-16 -rotate-6 text-denim-300/50 md:block" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+        </svg>
+        <svg class="absolute right-[19%] top-[16%] hidden h-20 w-20 text-denim-300/50 md:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="11" fill="currentColor" stroke="none" />
+            <g stroke="#f7fafe">
+                <polyline points="17 6 17 10 13 10" />
+                <polyline points="7 18 7 14 11 14" />
+                <path d="M7.5 10a5 5 0 0 1 9-1.5M16.5 14a5 5 0 0 1-9 1.5" />
+            </g>
+        </svg>
+        <svg class="absolute left-[14%] top-[40%] hidden h-14 w-14 -rotate-6 text-denim-300/50 md:block" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <rect x="4" y="11" width="16" height="11" rx="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5" />
+        </svg>
+        <svg class="absolute left-[24%] top-[50%] hidden h-14 w-14 text-denim-300/50 md:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+        <svg class="absolute right-[16%] top-[43%] hidden h-20 w-20 text-denim-300/50 md:block" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+
+        <!-- Content -->
+        <section class="relative z-10 mx-auto max-w-4xl px-6 text-center">
+            <h1 class="text-4xl leading-tight sm:text-5xl md:text-6xl">
+                Keep your <span class="text-denim-400">project</span> links in
+                <span class="text-denim-400">sync.</span>
+            </h1>
+
+            <p class="mx-auto mt-4 max-w-xl text-lg sm:text-xl">
+                A frictionless hub for teams to organize external links, docs, and tasks—no registration required.
+            </p>
+
+            <div class="mt-8 flex flex-wrap justify-center gap-6">
+                <button type="button"
+                        class="flex cursor-pointer items-center gap-2 rounded-lg bg-denim-200 px-4 py-2 text-xl transition hover:bg-denim-300">
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        <line x1="12" y1="11" x2="12" y2="17" />
+                        <line x1="9" y1="14" x2="15" y2="14" />
+                    </svg>
+                    Start a Project
+                </button>
+
+                <button type="button"
+                        class="flex cursor-pointer items-center gap-2 rounded-lg bg-denim-200 px-4 py-2 text-xl transition hover:bg-denim-300">
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    Join a Project
+                </button>
+            </div>
+        </section>
+    </main>
+</div>

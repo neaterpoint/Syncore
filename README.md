@@ -89,8 +89,8 @@ syncore/
 
 ## Author
 
-**[Your Name]**
-[GitHub](https://github.com/<your-username>) · [LinkedIn](https://linkedin.com/in/<your-profile>) · [Email](mailto:you@example.com)
+**Vince Mathew L. Silva**
+[GitHub](https://github.com/neaterpoint) · [LinkedIn](https://linkedin.com/in/vince-mathew-silva-755080365/) · [Email](mailto:silvavincemathew@gmail.com)
 
 ---
 
