@@ -57,24 +57,36 @@ Syncore is designed database-first. The entity-relationship diagram below shows 
 git clone https://github.com/<your-username>/syncore.git
 cd syncore
 
-# Configure your PostgreSQL connection string
-# (e.g., in appsettings.Development.json)
+# Restore .NET and install the Tailwind CSS CLI
+dotnet restore
+npm install
 ```
 
 ### Running the Project
 
 ```bash
-dotnet restore
+# Build the generated stylesheet
+npm run css:build
+
+# Start the Blazor application
 dotnet run
 ```
+
+During development, run `npm run css:watch` in a separate terminal to rebuild
+styles automatically when files in `Styles/` or Razor components change.
 
 ## Project Structure
 
 ```
 syncore/
-├── Syncore_ERD.png      # Entity relationship diagram
-├── README.md
-└── ...                  # Folders will be added as the project grows
+├── Components/          # Razor components and pages
+├── Properties/          # .NET launch settings
+├── Styles/input.css     # Tailwind CSS source
+├── wwwroot/             # Static assets and generated CSS
+├── Program.cs           # Application setup
+├── Syncore.csproj
+├── Syncore_ERD.png
+└── README.md
 ```
 
 ## Roadmap
