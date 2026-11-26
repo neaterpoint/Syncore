@@ -3,8 +3,16 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# dotenv files
-.env
+# Local environment variables and credentials
+.env*
+!.env.example
+appsettings.local.json
+appsettings.*.local.json
+appsettings.*.secrets.json
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
 
 # User-specific files
 *.rsuser

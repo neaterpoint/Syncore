@@ -1,0 +1,14 @@
+@inject NavigationManager Navigation
+
+<div class="page-wrap">
+    <p>Taking you to sign in…</p>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var returnUrl = Uri.EscapeDataString("/" + relative);
+        Navigation.NavigateTo($"/account?returnUrl={returnUrl}", forceLoad: true);
+    }
+}

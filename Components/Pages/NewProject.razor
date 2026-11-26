@@ -1,0 +1,77 @@
+@page "/projects/new"
+@attribute [Authorize]
+@inject SupabaseWorkspaceService Workspace
+@inject NavigationManager Navigation
+
+<PageTitle>New project | Syncore</PageTitle>
+
+<section class="page-wrap narrow-page">
+    <a class="back-link" href="/dashboard"><svg aria-hidden="true"><use href="/images/icons.svg#arrow-left"></use></svg> All projects</a>
+    <div class="form-panel">
+        <div class="form-panel-icon"><svg aria-hidden="true"><use href="/images/icons.svg#folder-plus"></use></svg></div>
+        <p class="card-kicker">A fresh space for your team</p>
+        <h1>Create a project</h1>
+        <p class="muted-copy">Start with a name. You can add teammates, tasks, and resources as you go.</p>
+
+        <form class="stack-form" @onsubmit="CreateProjectAsync" @onsubmit:preventDefault>
+            <label for="project-name">Project name</label>
+            <input id="project-name" type="text" maxlength="200" placeholder="e.g. Website redesign"
+                   required @bind="title" @bind:event="oninput" />
+
+            <label for="project-description">A short description <span class="optional">(optional)</span></label>
+            <textarea id="project-description" rows="3" maxlength="255"
+                      placeholder="What is this team working on?" @bind="description" @bind:event="oninput"></textarea>
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <p class="form-error" role="alert">@errorMessage</p>
+            }
+
+            <button class="button button-primary button-wide" type="submit"
+                    disabled="@(string.IsNullOrWhiteSpace(title) || isSaving)">
+                @(isSaving ? "Creating…" : "Create project")
+                <svg aria-hidden="true"><use href="/images/icons.svg#arrow-right"></use></svg>
+            </button>
+        </form>
+        <p class="form-footnote">The workspace and your owner membership are saved to Supabase.</p>
+    </div>
+</section>
+
+@code {
+    private string title = "";
+    private string description = "";
+    private string errorMessage = "";
+    private bool isSaving;
+
+    private async Task CreateProjectAsync()
+    {
+        if (isSaving || string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = "";
+        try
+        {
+            var projectId = await Workspace.CreateProjectAsync(title, description);
+            Navigation.NavigateTo($"/project/{projectId:D}");
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo("/account?returnUrl=%2Fprojects%2Fnew", forceLoad: true);
+        }
+        catch (SupabaseRequestException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

@@ -1,0 +1,147 @@
+@page "/account"
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in | Syncore</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <RedirectToProjects />
+    </Authorized>
+    <NotAuthorized>
+        <section class="auth-page">
+            <div class="auth-backdrop" aria-hidden="true"></div>
+            <div class="auth-card">
+                <div class="auth-illustration" aria-hidden="true">
+                    @if (step == 0)
+                    {
+                        <svg><use href="/images/icons.svg#mail"></use></svg>
+                    }
+                    else if (step == 1)
+                    {
+                        <svg><use href="/images/icons.svg#lock"></use></svg>
+                    }
+                    else
+                    {
+                        <svg><use href="/images/icons.svg#sparkles"></use></svg>
+                    }
+                </div>
+
+                @if (step == 0)
+                {
+                    <p class="card-kicker">Welcome to Syncore</p>
+                    <h1>Start with your email</h1>
+                    <p class="muted-copy">We’ll use a one-time code to sign you in and bring up your projects.</p>
+                    <form class="stack-form" @onsubmit="SendCodeAsync" @onsubmit:preventDefault>
+                        <label for="account-email">Email address</label>
+                        <input id="account-email" type="email" autocomplete="email" placeholder="you@team.com"
+                               required @bind="email" @bind:event="oninput" />
+                        <button class="button button-primary button-wide" type="submit" disabled="@(string.IsNullOrWhiteSpace(email) || isBusy)">
+                            @(isBusy ? "Sending…" : "Send sign-in code") <svg aria-hidden="true"><use href="/images/icons.svg#arrow-right"></use></svg>
+                        </button>
+                    </form>
+                }
+                else if (step == 1)
+                {
+                    <button type="button" class="text-button back-button" @onclick="ChangeEmail" disabled="@isBusy">
+                        <svg aria-hidden="true"><use href="/images/icons.svg#arrow-left"></use></svg> Change email
+                    </button>
+                    <p class="card-kicker">Check your inbox</p>
+                    <h1>Enter your one-time code</h1>
+                    <p class="muted-copy">Enter the code sent to <strong>@email</strong>.</p>
+                    <form class="stack-form" @onsubmit="VerifyCodeAsync" @onsubmit:preventDefault>
+                        <label for="account-code">6-digit code</label>
+                        <input id="account-code" type="text" inputmode="numeric" autocomplete="one-time-code"
+                               maxlength="6" pattern="[0-9]{6}" placeholder="000000" required @bind="code" @bind:event="oninput" />
+                        <button class="button button-primary button-wide" type="submit" disabled="@(code.Length != 6 || isBusy)">
+                            Continue <svg aria-hidden="true"><use href="/images/icons.svg#arrow-right"></use></svg>
+                        </button>
+                    </form>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <p class="form-error auth-error" role="alert">@errorMessage</p>
+                }
+
+                @if (step == 1)
+                {
+                    <button class="text-button resend-button" type="button" @onclick="SendCodeAsync" disabled="@isBusy">
+                        Send a new code
+                    </button>
+                }
+            </div>
+        </section>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private int step;
+    private string email = "";
+    private string code = "";
+    private string errorMessage = "";
+    private bool isBusy;
+
+    private async Task SendCodeAsync()
+    {
+        if (isBusy || string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        isBusy = true;
+        errorMessage = "";
+        try
+        {
+            await JS.InvokeVoidAsync("syncoreAuth.sendOtp", email.Trim());
+            step = 1;
+        }
+        catch (JSException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task VerifyCodeAsync()
+    {
+        if (isBusy || code.Length != 6)
+        {
+            return;
+        }
+
+        isBusy = true;
+        errorMessage = "";
+        try
+        {
+            await JS.InvokeVoidAsync("syncoreAuth.verifyOtp", email.Trim(), code.Trim());
+            var destination = Uri.TryCreate(ReturnUrl, UriKind.Relative, out var relativeUrl) &&
+                ReturnUrl?.StartsWith("/", StringComparison.Ordinal) == true &&
+                !ReturnUrl.StartsWith("//", StringComparison.Ordinal)
+                ? ReturnUrl
+                : "/dashboard";
+            Navigation.NavigateTo(destination, forceLoad: true);
+        }
+        catch (JSException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private void ChangeEmail()
+    {
+        step = 0;
+        code = "";
+        errorMessage = "";
+    }
+}

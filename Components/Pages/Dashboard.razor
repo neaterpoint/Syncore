@@ -1,0 +1,188 @@
+@page "/dashboard"
+@attribute [Authorize]
+@inject SupabaseWorkspaceService Workspace
+@inject NavigationManager Navigation
+
+<PageTitle>Projects | Syncore</PageTitle>
+
+<section class="page-wrap">
+    @if (isLoading)
+    {
+        <div class="loading-state" role="status">Loading your projects…</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon"><svg aria-hidden="true"><use href="/images/icons.svg#info"></use></svg></span>
+            <h1>We couldn’t load your projects</h1>
+            <p>@errorMessage</p>
+            <button class="button button-primary" type="button" @onclick="LoadAsync">Try again</button>
+        </div>
+    }
+    else if (dashboard is not null)
+    {
+        <div class="page-heading dashboard-heading">
+            <div>
+                <p class="card-kicker">Good to have you back, @dashboard.DisplayName</p>
+                <h1>Your projects</h1>
+                <p class="muted-copy">A quick view of your workspaces and what needs your attention.</p>
+            </div>
+            @if (dashboard.Projects.Count > 0)
+            {
+                <div class="heading-actions">
+                    <a class="button button-secondary" href="/projects/join"><svg aria-hidden="true"><use href="/images/icons.svg#users"></use></svg> Join project</a>
+                    <a class="button button-primary" href="/projects/new"><svg aria-hidden="true"><use href="/images/icons.svg#plus"></use></svg> New project</a>
+                </div>
+            }
+        </div>
+
+        @if (dashboard.Projects.Count == 0)
+        {
+            <div class="empty-state first-project-state">
+                <span class="empty-state-icon"><svg aria-hidden="true"><use href="/images/icons.svg#folder-plus"></use></svg></span>
+                <p class="card-kicker">A good place to begin</p>
+                <h1>Your projects will live here</h1>
+                <p>Create a workspace for your team, or join one with an invite code.</p>
+                <div class="heading-actions">
+                    <a class="button button-primary" href="/projects/new">Create a project</a>
+                    <a class="button button-secondary" href="/projects/join">Join a project</a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="dashboard-grid">
+                <section class="panel projects-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Workspaces <span class="count-pill">@dashboard.Projects.Count</span></h2>
+                            <p>Projects you own or collaborate on</p>
+                        </div>
+                        <a class="quiet-link" href="/projects/new">Create one <span aria-hidden="true">→</span></a>
+                    </div>
+
+                    <div class="project-list">
+                        @foreach (var project in dashboard.Projects)
+                        {
+                            var pendingCount = project.Tasks.Count(task => task.Status != WorkspaceTaskStatus.Done);
+                            <a class="project-card" href="@($"/project/{project.Id:D}")">
+                                <span class="project-mark"><svg aria-hidden="true"><use href="/images/icons.svg#folder-plus"></use></svg></span>
+                                <span class="project-card-copy">
+                                    <span class="project-card-title">@project.Title</span>
+                                    <span class="project-card-description">@project.Description</span>
+                                    <span class="project-card-meta">Led by @project.OwnerName <span aria-hidden="true">·</span> @project.Members.Count members</span>
+                                </span>
+                                <span class="project-card-stats">
+                                    <strong>@pendingCount</strong>
+                                    <small>open tasks</small>
+                                    <small>Created @project.CreatedAt.ToLocalTime().ToString("MMM d")</small>
+                                </span>
+                                <svg class="project-card-arrow" aria-hidden="true"><use href="/images/icons.svg#arrow-right"></use></svg>
+                            </a>
+                        }
+                    </div>
+                </section>
+
+                <aside class="dashboard-sidebar">
+                    <section class="panel todo-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Coming up</h2>
+                                <p>Your next open tasks</p>
+                            </div>
+                            <svg class="panel-heading-icon" aria-hidden="true"><use href="/images/icons.svg#check"></use></svg>
+                        </div>
+                        @if (dashboard.UpcomingTasks.Count > 0)
+                        {
+                            <div class="todo-list">
+                                @foreach (var item in dashboard.UpcomingTasks.Take(4))
+                                {
+                                    <a class="todo-card" href="@($"/project/{item.ProjectId:D}")">
+                                        <span class="todo-status-dot"></span>
+                                        <span class="todo-copy">
+                                            <strong>@item.Task.Title</strong>
+                                            <small>@item.ProjectTitle</small>
+                                            <small class="todo-due">
+                                                <svg aria-hidden="true"><use href="/images/icons.svg#calendar"></use></svg>
+                                                @(item.Task.DueAt is null ? "No due date" : item.Task.DueAt.Value.ToLocalTime().ToString("MMM d"))
+                                            </small>
+                                        </span>
+                                        <svg class="todo-arrow" aria-hidden="true"><use href="/images/icons.svg#arrow-right"></use></svg>
+                                    </a>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="empty-note">No open tasks. Enjoy the breathing room.</p>
+                        }
+                    </section>
+
+                    <section class="panel calendar-panel">
+                        <div class="calendar-heading">
+                            <svg aria-hidden="true"><use href="/images/icons.svg#calendar"></use></svg>
+                            <h2>@CurrentMonth</h2>
+                        </div>
+                        <div class="calendar-weekdays" aria-hidden="true">
+                            @foreach (var day in Weekdays)
+                            {
+                                <span>@day</span>
+                            }
+                        </div>
+                        <div class="calendar-grid" aria-label="@CurrentMonth calendar">
+                            @foreach (var date in CalendarDays)
+                            {
+                                var isCurrentMonth = date.Month == FirstOfMonth.Month;
+                                var hasTask = dashboard.UpcomingTasks.Any(task => task.Task.DueAt is not null && DateOnly.FromDateTime(task.Task.DueAt.Value.ToLocalTime().DateTime) == date);
+                                <span class="calendar-day @(isCurrentMonth ? "" : "outside-month") @(date == Today ? "today" : "") @(hasTask ? "has-task" : "")">@date.Day</span>
+                            }
+                        </div>
+                        <div class="calendar-legend"><span></span> Task due</div>
+                    </section>
+                </aside>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private static readonly string[] Weekdays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    private WorkspaceDashboard? dashboard;
+    private string errorMessage = "";
+    private bool isLoading = true;
+    private DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly FirstOfMonth => new(Today.Year, Today.Month, 1);
+    private string CurrentMonth => FirstOfMonth.ToString("MMMM yyyy");
+    private IEnumerable<DateOnly> CalendarDays
+    {
+        get
+        {
+            var gridStart = FirstOfMonth.AddDays(-(int)FirstOfMonth.DayOfWeek);
+            return Enumerable.Range(0, 42).Select(day => gridStart.AddDays(day));
+        }
+    }
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        errorMessage = "";
+        try
+        {
+            dashboard = await Workspace.GetDashboardAsync();
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo("/account?returnUrl=%2Fdashboard", forceLoad: true);
+        }
+        catch (Exception)
+        {
+            errorMessage = "The database request failed. Check your Supabase project settings and Row Level Security policies, then try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

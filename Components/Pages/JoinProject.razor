@@ -1,0 +1,77 @@
+@page "/projects/join"
+@attribute [Authorize]
+@inject SupabaseWorkspaceService Workspace
+@inject NavigationManager Navigation
+
+<PageTitle>Join a project | Syncore</PageTitle>
+
+<section class="page-wrap narrow-page">
+    <a class="back-link" href="/dashboard"><svg aria-hidden="true"><use href="/images/icons.svg#arrow-left"></use></svg> All projects</a>
+    <div class="form-panel">
+        <div class="form-panel-icon"><svg aria-hidden="true"><use href="/images/icons.svg#users"></use></svg></div>
+        <p class="card-kicker">Your team is waiting</p>
+        <h1>Join a project</h1>
+        <p class="muted-copy">Enter the invite code shared by a project owner, then choose your name for that workspace.</p>
+
+        <form class="stack-form" @onsubmit="SubmitJoinAsync" @onsubmit:preventDefault>
+            <label for="invite-code">Project invite code</label>
+            <input id="invite-code" type="text" autocomplete="off" placeholder="Paste your invite code"
+                   required @bind="inviteCode" @bind:event="oninput" />
+
+            <label for="member-nickname">Your project nickname</label>
+            <input id="member-nickname" type="text" maxlength="80" placeholder="How teammates will see you"
+                   required @bind="nickname" @bind:event="oninput" />
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <p class="form-error" role="alert">@errorMessage</p>
+            }
+
+            <button class="button button-primary button-wide" type="submit"
+                    disabled="@(string.IsNullOrWhiteSpace(inviteCode) || string.IsNullOrWhiteSpace(nickname) || isJoining)">
+                @(isJoining ? "Joining…" : "Join project") <svg aria-hidden="true"><use href="/images/icons.svg#arrow-right"></use></svg>
+            </button>
+        </form>
+
+        <p class="form-footnote">Invite codes are checked securely by Supabase. Ask a project owner for a current code.</p>
+    </div>
+</section>
+
+@code {
+    private string inviteCode = "";
+    private string nickname = "";
+    private string errorMessage = "";
+    private bool isJoining;
+
+    private async Task SubmitJoinAsync()
+    {
+        if (isJoining || string.IsNullOrWhiteSpace(inviteCode) || string.IsNullOrWhiteSpace(nickname))
+        {
+            return;
+        }
+
+        isJoining = true;
+        errorMessage = "";
+        try
+        {
+            var projectId = await Workspace.JoinProjectAsync(inviteCode, nickname);
+            Navigation.NavigateTo($"/project/{projectId:D}");
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo("/account?returnUrl=%2Fprojects%2Fjoin", forceLoad: true);
+        }
+        catch (SupabaseRequestException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+        finally
+        {
+            isJoining = false;
+        }
+    }
+}

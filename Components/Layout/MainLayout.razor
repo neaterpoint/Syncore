@@ -1,9 +1,48 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <div class="cursor-grid" aria-hidden="true"></div>
 
-<div class="relative z-10 min-h-screen">
-    @Body
+<div class="app-shell relative z-10 min-h-screen">
+    <header class="site-header">
+        <a href="@(isAuthenticated ? "/dashboard" : "/")" class="brand" aria-label="@(isAuthenticated ? "Your projects" : "Syncore home")">
+            <img src="/images/syncore-logo.svg" alt="" aria-hidden="true" />
+            <span>Syn<span>core</span></span>
+        </a>
+
+        <nav class="site-nav hidden md:flex" aria-label="Main navigation">
+            @if (isAuthenticated)
+            {
+                <a href="/dashboard">Projects</a>
+            }
+            <span class="coming-soon" title="Pricing is planned for a later release">Pricing <small>Later</small></span>
+            <a href="mailto:silvamathew@gmail.com">Support</a>
+        </nav>
+
+        @if (isAuthenticated)
+        {
+            <div class="relative">
+                <button type="button" class="menu-button" aria-label="Open account menu"
+                        aria-expanded="@menuOpen" @onclick="ToggleMenu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#menu"></use></svg>
+                </button>
+                @if (menuOpen)
+                {
+                    <div class="menu-popover">
+                        <a href="/dashboard" @onclick="CloseMenu">Projects</a>
+                        <a href="/settings" @onclick="CloseMenu">Settings</a>
+                        <button type="button" @onclick="SignOutAsync">Sign out</button>
+                    </div>
+                }
+            </div>
+        }
+    </header>
+
+    <main>
+        @Body
+    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet
@@ -12,3 +51,24 @@
     <a href="." class="reload underline">Reload</a>
     <span class="dismiss float-right cursor-pointer">🗙</span>
 </div>
+
+@code {
+    private bool menuOpen;
+    private bool isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAuthenticated = state.User.Identity?.IsAuthenticated == true;
+    }
+
+    private void ToggleMenu() => menuOpen = !menuOpen;
+
+    private void CloseMenu() => menuOpen = false;
+
+    private async Task SignOutAsync()
+    {
+        await JS.InvokeVoidAsync("syncoreAuth.signOut");
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

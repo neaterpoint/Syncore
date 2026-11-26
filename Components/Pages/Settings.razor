@@ -1,0 +1,130 @@
+@page "/settings"
+@attribute [Authorize]
+@inject SupabaseWorkspaceService Workspace
+@inject NavigationManager Navigation
+
+<PageTitle>Account settings | Syncore</PageTitle>
+
+<section class="page-wrap settings-page">
+    <a class="back-link" href="/dashboard"><svg aria-hidden="true"><use href="/images/icons.svg#arrow-left"></use></svg> Back to projects</a>
+    <div class="page-heading compact-heading">
+        <div>
+            <p class="card-kicker">Your account</p>
+            <h1>Settings</h1>
+            <p class="muted-copy">A few details that help your team recognize you.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state" role="status">Loading your profile…</div>
+    }
+    else
+    {
+        <section class="panel settings-panel">
+            <div class="settings-section-heading">
+                <span class="settings-avatar">@Initials</span>
+                <div>
+                    <h2>Profile</h2>
+                    <p>Your display name is used as the default project nickname.</p>
+                </div>
+            </div>
+            <form class="stack-form settings-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+                <label for="profile-name">Display name</label>
+                <input id="profile-name" type="text" maxlength="80" required @bind="displayName" @bind:event="oninput" />
+                <label for="profile-email">Email address</label>
+                <input id="profile-email" type="email" readonly value="@email" />
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <p class="form-error" role="alert">@errorMessage</p>
+                }
+                <div class="settings-actions">
+                    @if (saved)
+                    {
+                        <span class="success-note"><svg aria-hidden="true"><use href="/images/icons.svg#check"></use></svg> Saved</span>
+                    }
+                    <button class="button button-primary" type="submit"
+                            disabled="@(string.IsNullOrWhiteSpace(displayName) || isSaving)">
+                        @(isSaving ? "Saving…" : "Save changes")
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <div class="settings-later">
+            <svg aria-hidden="true"><use href="/images/icons.svg#sparkles"></use></svg>
+            <span><strong>Billing and plan settings are coming later.</strong> Pricing and payments are intentionally not part of this release.</span>
+        </div>
+    }
+</section>
+
+@code {
+    private string displayName = "";
+    private string email = "";
+    private string errorMessage = "";
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool saved;
+
+    private string Initials => string.Join("", displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Take(2)
+        .Select(part => char.ToUpperInvariant(part[0])));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            email = await Workspace.GetEmailAsync();
+            displayName = await Workspace.GetProfileAsync();
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo("/account?returnUrl=%2Fsettings", forceLoad: true);
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+        catch (SupabaseRequestException)
+        {
+            errorMessage = "The profile could not be loaded. Check your Supabase database setup.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (isSaving || string.IsNullOrWhiteSpace(displayName))
+        {
+            return;
+        }
+
+        isSaving = true;
+        saved = false;
+        errorMessage = "";
+        try
+        {
+            await Workspace.UpdateProfileAsync(displayName);
+            saved = true;
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo("/account?returnUrl=%2Fsettings", forceLoad: true);
+        }
+        catch (SupabaseRequestException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

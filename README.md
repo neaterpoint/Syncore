@@ -1,109 +1,115 @@
 # Syncore
 
-> **One workspace. Every resource. Zero setup friction.**
+Syncore is a shared project workspace for collecting team links and coordinating
+tasks. Projects are private to their members and use email one-time-code sign-in.
 
-![Status](https://img.shields.io/badge/status-in%20development-blue)
-![Version](https://img.shields.io/badge/version-0.1.0-informational)
-![Blazor](https://img.shields.io/badge/Blazor-512BD4?logo=blazor&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
+## Features
 
----
+- Email OTP authentication with Supabase Auth
+- Project creation and invite-code joining
+- Project member profiles and nicknames
+- Shared resource links and task tracking
+- Responsive Blazor UI styled with Tailwind CSS
 
-## Overview
+Real-time updates and billing are not included in this release.
 
-Syncore is a centralized project management hub that gathers a team's scattered external resources (documents, repositories, and design files) into a single, accessible dashboard, with no accounts, passwords, or onboarding barriers.
+## Tech stack
 
-**The problem:** Project work lives across many tools, and keeping everyone aligned means chasing links through chats and emails. Most project hubs add their own friction on top: sign-ups, verification steps, and heavy file uploads.
+- .NET 10 and Blazor Interactive Server
+- Supabase Auth, PostgreSQL, REST API, and Row Level Security
+- Tailwind CSS 4
 
-**The solution:** A team creates a workspace in seconds and shares an **access code**. Collaborators enter the code, type their **name**, and they're in. Syncore doesn't host files. It acts as a lightweight, real-time **link directory and task tracker**, so every contributor stays synced.
+## Prerequisites
 
-## Key Features
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Node.js](https://nodejs.org/) and npm
+- A Supabase project
 
-- **Instant workspaces**: generate a project workspace with a single action
-- **Access-code invitations**: invite collaborators by sharing a simple code, with no authentication flow
-- **Name-only onboarding**: new members are asked for just their name on entry
-- **Centralized resource dashboard**: organize links to documents, repositories, and design files in one view
-- **Task tracking**: keep team responsibilities visible alongside the resources they relate to
-- **Real-time sync**: updates are reflected for all members so the team stays aligned
-- **Lightweight by design**: a link directory rather than a file-hosting service, keeping the platform fast and simple
+## Local development
 
-## Data Model
+Clone the repository and install dependencies:
 
-Syncore is designed database-first. The entity-relationship diagram below shows the core entities and how they relate.
-
-![Syncore Entity Relationship Diagram](Syncore_ERD.png)
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| UI | Blazor, Tailwind CSS |
-| Language / Framework | C#, .NET (Blazor) |
-| Database | PostgreSQL |
-| Tools | Git |
-
-## Getting Started
-
-### Prerequisites
-
-- [.NET SDK](https://dotnet.microsoft.com/download)
-- [PostgreSQL](https://www.postgresql.org/download/)
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/<your-username>/syncore.git
-cd syncore
-
-# Restore .NET and install the Tailwind CSS CLI
+```powershell
+git clone https://github.com/neaterpoint/Syncore.git
+cd Syncore
 dotnet restore
 npm install
 ```
 
-### Running the Project
+Build the stylesheet and start the HTTP development profile:
 
-```bash
-# Build the generated stylesheet
+```powershell
 npm run css:build
-
-# Start the Blazor application
-dotnet run
+dotnet run --launch-profile http
 ```
 
-During development, run `npm run css:watch` in a separate terminal to rebuild
-styles automatically when files in `Styles/` or Razor components change.
+The app is available at `http://localhost:5083`. To rebuild Tailwind CSS as
+files change, run `npm run css:watch` in another terminal.
 
-## Project Structure
+## Supabase setup
 
-```
-syncore/
-├── Components/          # Razor components and pages
-├── Properties/          # .NET launch settings
-├── Styles/input.css     # Tailwind CSS source
-├── wwwroot/             # Static assets and generated CSS
-├── Program.cs           # Application setup
-├── Syncore.csproj
-├── Syncore_ERD.png
-└── README.md
+1. In the Supabase SQL Editor, apply
+   `supabase/migrations/20261126000100_initial_schema.sql`. Skip this if it has
+   already been applied.
+2. Apply `supabase/migrations/20261126000200_backfill_existing_profiles.sql`.
+   It can be run again safely.
+3. In **Authentication → Sign In / Providers → Email**, enable email OTP and
+   set the code length to six digits.
+4. In **Authentication → URL Configuration**, set the local Site URL to
+   `http://localhost:5083` and allow `http://localhost:5083/**`.
+5. In **Authentication → Emails → Magic link or OTP**, make sure the template
+   displays `{{ .Token }}` as the code. Remove link-only placeholders if the
+   app should prompt for a code.
+6. Configure a custom SMTP provider in **Authentication → SMTP Settings**.
+   Supabase's default sender is restricted and rate-limited; it is intended
+   only for testing.
+7. Store the project URL and publishable key as local .NET User Secrets:
+
+   ```powershell
+   dotnet user-secrets set "Supabase:Url" "https://YOUR_PROJECT_REF.supabase.co"
+   dotnet user-secrets set "Supabase:PublishableKey" "YOUR_PUBLISHABLE_KEY"
+   ```
+
+Never use a Supabase `service_role` key in this app. Keep credentials out of
+source files, browser code, and chat. If an OTP request fails, check the
+Supabase Auth logs and the app's server log for the provider error.
+
+## Authentication and sessions
+
+The browser sends OTP requests to same-origin application endpoints. The server
+communicates with Supabase Auth and keeps access and refresh tokens in memory;
+the browser receives only an opaque HttpOnly cookie. Supabase REST requests use
+the signed-in user's JWT, so database Row Level Security policies remain in
+force.
+
+The in-memory session store is for local development and a single app instance.
+Restarting the app signs users out. Use a shared protected session store before
+deploying multiple app instances.
+
+## Database source of truth
+
+The SQL migrations in `supabase/migrations/` define the current database schema,
+functions, and Row Level Security policies.
+
+## Project structure
+
+```text
+Components/       Blazor layouts, pages, and shared components
+Endpoints/        Same-origin authentication endpoints
+Services/         Supabase Auth, session, and workspace services
+Styles/           Tailwind CSS source
+wwwroot/          Generated CSS, browser scripts, and image assets
+supabase/         Database migrations
+Properties/       .NET launch profiles
+Program.cs        Application and middleware setup
 ```
 
 ## Roadmap
 
-- [x] Database design and ERD
-- [ ] Workspace creation and access-code join flow
-- [ ] Resource link directory
-- [ ] Task tracker
-- [ ] Real-time updates across members
-- [ ] Responsive UI with Tailwind CSS
-- [ ] Testing, documentation, and deployment
-
-## Author
-
-**Vince Mathew L. Silva**
-[GitHub](https://github.com/neaterpoint) · [LinkedIn](https://linkedin.com/in/vince-mathew-silva-755080365/) · [Email](mailto:silvavincemathew@gmail.com)
-
----
-
-*Syncore is under active development. Feedback is welcome.*
+- [x] Email OTP authentication
+- [x] Project creation and invite-code joining
+- [x] Project links and task tracking
+- [x] Responsive interface
+- [ ] Real-time updates
+- [ ] Billing and payments
+- [ ] Automated tests and deployment

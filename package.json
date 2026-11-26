@@ -7,17 +7,6 @@
     "css:watch": "npx @tailwindcss/cli -i ./Styles/input.css -o ./wwwroot/app.css --watch",
     "css:build": "npx @tailwindcss/cli -i ./Styles/input.css -o ./wwwroot/app.css --minify"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/neaterpoint/Syncore.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/neaterpoint/Syncore/issues"
-  },
-  "homepage": "https://github.com/neaterpoint/Syncore#readme",
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.5",
     "tailwindcss": "^4.3.5"

@@ -1,0 +1,389 @@
+@page "/project/{ProjectId:guid}"
+@attribute [Authorize]
+@inject SupabaseWorkspaceService Workspace
+@inject NavigationManager Navigation
+
+<PageTitle>@(Project?.Title ?? "Project") | Syncore</PageTitle>
+
+<section class="page-wrap">
+    @if (isLoading)
+    {
+        <div class="loading-state" role="status">Loading project…</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon"><svg aria-hidden="true"><use href="/images/icons.svg#info"></use></svg></span>
+            <h1>We couldn’t load this project</h1>
+            <p>@loadError</p>
+            <a class="button button-primary" href="/dashboard">Back to projects</a>
+        </div>
+    }
+    else if (Project is null)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon"><svg aria-hidden="true"><use href="/images/icons.svg#search"></use></svg></span>
+            <h1>We couldn’t find that project</h1>
+            <p>It may have been removed or you may not be a member.</p>
+            <a class="button button-primary" href="/dashboard">Back to projects</a>
+        </div>
+    }
+    else
+    {
+        <a class="back-link" href="/dashboard"><svg aria-hidden="true"><use href="/images/icons.svg#arrow-left"></use></svg> All projects</a>
+
+        <div class="project-hero">
+            <div class="project-hero-copy">
+                <p class="card-kicker">Project workspace <span class="inline-dot"></span> Led by @Project.OwnerName</p>
+                <h1>@Project.Title</h1>
+                <p>@(string.IsNullOrWhiteSpace(Project.Description) ? "Bring your team’s resources and next steps together." : Project.Description)</p>
+                <div class="project-hero-meta">
+                    <span><svg aria-hidden="true"><use href="/images/icons.svg#users"></use></svg> @Project.Members.Count members</span>
+                    <span><svg aria-hidden="true"><use href="/images/icons.svg#clock"></use></svg> Created @Project.CreatedAt.ToLocalTime().ToString("MMM d")</span>
+                </div>
+            </div>
+            <div class="invite-card">
+                <span class="invite-icon"><svg aria-hidden="true"><use href="/images/icons.svg#link"></use></svg></span>
+                <span class="invite-label">Project invite code</span>
+                @if (string.IsNullOrWhiteSpace(inviteCode))
+                {
+                    <button class="button button-small button-secondary" type="button" @onclick="CreateInviteAsync" disabled="@isCreatingInvite">
+                        @(isCreatingInvite ? "Creating…" : "Create invite code")
+                    </button>
+                }
+                else
+                {
+                    <strong>@inviteCode</strong>
+                    <small>Copy this code and share it with teammates.</small>
+                    <button class="text-button" type="button" @onclick="CreateInviteAsync" disabled="@isCreatingInvite">Create another code</button>
+                }
+                @if (!string.IsNullOrWhiteSpace(inviteError))
+                {
+                    <small class="form-error" role="alert">@inviteError</small>
+                }
+            </div>
+        </div>
+
+        <div class="workspace-grid">
+            <section class="panel workspace-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Tasks <span class="count-pill">@Project.Tasks.Count(task => task.Status != WorkspaceTaskStatus.Done) open</span></h2>
+                        <p>Keep next steps visible and moving</p>
+                    </div>
+                    <button class="button button-small button-secondary" type="button" @onclick="() => showTaskForm = !showTaskForm">
+                        <svg aria-hidden="true"><use href="/images/icons.svg#plus"></use></svg> Add task
+                    </button>
+                </div>
+
+                @if (showTaskForm)
+                {
+                    <form class="inline-form task-create-form" @onsubmit="AddTaskAsync" @onsubmit:preventDefault>
+                        <label class="sr-only" for="task-title">Task title</label>
+                        <input id="task-title" type="text" maxlength="200" placeholder="What needs to get done?" required @bind="newTaskTitle" @bind:event="oninput" />
+                        <label class="sr-only" for="task-due">Due date</label>
+                        <input id="task-due" type="date" @bind="newTaskDueDate" />
+                        <button class="button button-primary button-small" type="submit"
+                                disabled="@(string.IsNullOrWhiteSpace(newTaskTitle) || isSavingTask)">
+                            @(isSavingTask ? "Saving…" : "Save")
+                        </button>
+                    </form>
+                }
+                @if (!string.IsNullOrWhiteSpace(taskError))
+                {
+                    <p class="form-error" role="alert">@taskError</p>
+                }
+
+                @if (Project.Tasks.Count > 0)
+                {
+                    <div class="task-list">
+                        @foreach (var task in Project.Tasks.OrderBy(task => task.Status == WorkspaceTaskStatus.Done).ThenBy(task => task.DueAt))
+                        {
+                            <article class="task-row @(task.Status == WorkspaceTaskStatus.Done ? "task-complete" : "")">
+                                <span class="task-checkbox @(task.Status == WorkspaceTaskStatus.Done ? "checked" : "")">
+                                    @if (task.Status == WorkspaceTaskStatus.Done)
+                                    {
+                                        <svg aria-hidden="true"><use href="/images/icons.svg#check"></use></svg>
+                                    }
+                                </span>
+                                <span class="task-row-copy">
+                                    <strong>@task.Title</strong>
+                                    @if (!string.IsNullOrWhiteSpace(task.Description))
+                                    {
+                                        <small>@task.Description</small>
+                                    }
+                                    <small class="task-meta">Assigned to @task.AssignedTo
+                                        @if (task.DueAt is not null)
+                                        {
+                                            <span> · Due @task.DueAt.Value.ToLocalTime().ToString("MMM d")</span>
+                                        }
+                                    </small>
+                                </span>
+                                <label class="sr-only" for="@($"status-{task.Id:N}")">Status for @task.Title</label>
+                                <select id="@($"status-{task.Id:N}")" class="status-select" value="@StatusLabel(task.Status)"
+                                        @onchange="args => SetStatusAsync(task, args)">
+                                    <option>To do</option>
+                                    <option>In progress</option>
+                                    <option>Done</option>
+                                </select>
+                            </article>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-inline">
+                        <span class="empty-state-icon"><svg aria-hidden="true"><use href="/images/icons.svg#check"></use></svg></span>
+                        <strong>A clear slate</strong>
+                        <span>Add the first task to get the project moving.</span>
+                    </div>
+                }
+            </section>
+
+            <section class="panel workspace-panel resources-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Shared resources <span class="count-pill">@Project.Links.Count</span></h2>
+                        <p>Useful links, all in one place</p>
+                    </div>
+                    <button class="button button-small button-secondary" type="button" @onclick="() => showLinkForm = !showLinkForm">
+                        <svg aria-hidden="true"><use href="/images/icons.svg#plus"></use></svg> Add link
+                    </button>
+                </div>
+
+                @if (showLinkForm)
+                {
+                    <form class="inline-form link-create-form" @onsubmit="AddLinkAsync" @onsubmit:preventDefault>
+                        <label class="sr-only" for="link-url">Web address</label>
+                        <input id="link-url" type="url" maxlength="2048" placeholder="https://…" required @bind="newLinkUrl" @bind:event="oninput" />
+                        <label class="sr-only" for="link-source">Source platform</label>
+                        <input id="link-source" type="text" maxlength="80" placeholder="Platform (optional)" @bind="newLinkSource" @bind:event="oninput" />
+                        <button class="button button-primary button-small" type="submit"
+                                disabled="@(string.IsNullOrWhiteSpace(newLinkUrl) || isSavingLink)">
+                            @(isSavingLink ? "Saving…" : "Save link")
+                        </button>
+                    </form>
+                }
+                @if (!string.IsNullOrWhiteSpace(linkError))
+                {
+                    <p class="form-error" role="alert">@linkError</p>
+                }
+
+                @if (Project.Links.Count > 0)
+                {
+                    <div class="resource-list">
+                        @foreach (var link in Project.Links)
+                        {
+                            <a class="resource-row" href="@link.Url" target="_blank" rel="noopener noreferrer">
+                                <span class="resource-icon"><svg aria-hidden="true"><use href="/images/icons.svg#external-link"></use></svg></span>
+                                <span class="resource-copy">
+                                    <strong>@link.Platform</strong>
+                                    <small>@link.Url <span aria-hidden="true">·</span> Added by @link.AddedBy</small>
+                                </span>
+                                <svg class="resource-arrow" aria-hidden="true"><use href="/images/icons.svg#arrow-right"></use></svg>
+                            </a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-inline">
+                        <span class="empty-state-icon"><svg aria-hidden="true"><use href="/images/icons.svg#link"></use></svg></span>
+                        <strong>No resources yet</strong>
+                        <span>Save a document, design, or useful website here.</span>
+                    </div>
+                }
+            </section>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private WorkspaceProject? Project { get; set; }
+    private string inviteCode = "";
+    private string loadError = "";
+    private string inviteError = "";
+    private string taskError = "";
+    private string linkError = "";
+    private string newTaskTitle = "";
+    private DateTime? newTaskDueDate;
+    private string newLinkUrl = "";
+    private string newLinkSource = "";
+    private bool isLoading = true;
+    private bool isCreatingInvite;
+    private bool isSavingTask;
+    private bool isSavingLink;
+    private bool showTaskForm;
+    private bool showLinkForm;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        loadError = "";
+        try
+        {
+            Project = await Workspace.GetProjectAsync(ProjectId);
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo($"/account?returnUrl=%2Fproject%2F{ProjectId:D}", forceLoad: true);
+        }
+        catch (HttpRequestException)
+        {
+            loadError = "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+        catch (SupabaseRequestException)
+        {
+            loadError = "The database request failed. Check your Supabase project settings and Row Level Security policies.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CreateInviteAsync()
+    {
+        isCreatingInvite = true;
+        inviteError = "";
+        try
+        {
+            inviteCode = await Workspace.CreateInviteAsync(ProjectId);
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo($"/account?returnUrl=%2Fproject%2F{ProjectId:D}", forceLoad: true);
+        }
+        catch (SupabaseRequestException exception)
+        {
+            inviteError = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            inviteError = "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+        finally
+        {
+            isCreatingInvite = false;
+        }
+    }
+
+    private async Task AddTaskAsync()
+    {
+        if (Project is null || isSavingTask || string.IsNullOrWhiteSpace(newTaskTitle))
+        {
+            return;
+        }
+
+        isSavingTask = true;
+        taskError = "";
+        try
+        {
+            await Workspace.AddTaskAsync(ProjectId, newTaskTitle, "", newTaskDueDate);
+            newTaskTitle = "";
+            newTaskDueDate = null;
+            showTaskForm = false;
+            await LoadAsync();
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo($"/account?returnUrl=%2Fproject%2F{ProjectId:D}", forceLoad: true);
+        }
+        catch (SupabaseRequestException exception)
+        {
+            taskError = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            taskError = "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+        finally
+        {
+            isSavingTask = false;
+        }
+    }
+
+    private async Task AddLinkAsync()
+    {
+        if (Project is null || isSavingLink || string.IsNullOrWhiteSpace(newLinkUrl))
+        {
+            return;
+        }
+
+        if (!Uri.TryCreate(newLinkUrl, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+        {
+            linkError = "Enter a valid http or https address.";
+            return;
+        }
+
+        isSavingLink = true;
+        linkError = "";
+        try
+        {
+            await Workspace.AddLinkAsync(ProjectId, uri.AbsoluteUri, newLinkSource);
+            newLinkUrl = "";
+            newLinkSource = "";
+            showLinkForm = false;
+            await LoadAsync();
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo($"/account?returnUrl=%2Fproject%2F{ProjectId:D}", forceLoad: true);
+        }
+        catch (SupabaseRequestException exception)
+        {
+            linkError = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            linkError = "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+        finally
+        {
+            isSavingLink = false;
+        }
+    }
+
+    private async Task SetStatusAsync(WorkspaceTask task, ChangeEventArgs args)
+    {
+        if (args.Value is not string label)
+        {
+            return;
+        }
+
+        var status = label switch
+        {
+            "In progress" => WorkspaceTaskStatus.InProgress,
+            "Done" => WorkspaceTaskStatus.Done,
+            _ => WorkspaceTaskStatus.ToDo
+        };
+
+        try
+        {
+            await Workspace.UpdateTaskStatusAsync(ProjectId, task.Id, status);
+            await LoadAsync();
+        }
+        catch (SupabaseSessionExpiredException)
+        {
+            Navigation.NavigateTo($"/account?returnUrl=%2Fproject%2F{ProjectId:D}", forceLoad: true);
+        }
+        catch (Exception exception) when (exception is SupabaseRequestException or HttpRequestException)
+        {
+            taskError = exception is SupabaseRequestException supabaseException
+                ? supabaseException.Message
+                : "Supabase couldn’t be reached. Check your connection and try again.";
+        }
+    }
+
+    private static string StatusLabel(WorkspaceTaskStatus status) => status switch
+    {
+        WorkspaceTaskStatus.InProgress => "In progress",
+        WorkspaceTaskStatus.Done => "Done",
+        _ => "To do"
+    };
+}
